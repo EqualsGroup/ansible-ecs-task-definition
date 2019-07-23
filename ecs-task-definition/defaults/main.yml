@@ -3,7 +3,7 @@
 
 service: "{{ lookup('env','SERVICE') | default(null, true) }}"
 env: "{{ lookup('env','ENV') | default(null, true) }}" #because 'environment' is a reserved keyword -_-
-docker_tag: "{{ lookup('env','DOCKER_TAG') | default(env, true) }}"
+docker_tag: "{{ lookup('env','DOCKER_TAG') | default(env, true) | regex_replace('[^a-z0-9\-\_\.]', '_') }}"
 
 assume_role_arn: "{{ lookup('aws_ssm', '/'+ service +'/'+ env +'/roles/deployer' ) }}"
 role_duration: 900
