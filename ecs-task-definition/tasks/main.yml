@@ -1,6 +1,6 @@
 ---
 # tasks file for ecs-task-definition
-
+ 
 - name: Verify required variables
   fail:
     msg: "Required variable not set"
@@ -33,6 +33,10 @@
 - name: Load task definition
   set_fact:
     task_definition: "{{ lookup('template', './task-definition.json') }}"
+
+- name: Task definition
+  debug:
+    msg: "{{ task_definition | to_json }}"
 
 - name: Create task definition
   ecs_taskdefinition:
