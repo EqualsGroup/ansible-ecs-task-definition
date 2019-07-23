@@ -4,11 +4,10 @@
 - name: Verify required variables
   fail:
     msg: "Required variable not set"
-  when: item is not defined
-  loop:
-    - "{{ service }}"
-    - "{{ env }}"
-    - "{{ docker_tag }}"
+  when:
+    - service is not defined
+    - env is not defined
+    - docker_tag is not defined
 
 - name: Assume deployer role
   sts_assume_role:
