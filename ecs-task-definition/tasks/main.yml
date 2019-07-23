@@ -1,0 +1,57 @@
+---
+# tasks file for ecs-task-definition
+
+- name: Verify required variables
+  fail:
+    msg: "Required variable not set"
+  when: item is not defined
+  loop:
+    - "{{ service }}"
+    - "{{ env }}"
+    - "{{ docker_tag }}"
+
+- name: Assume deployer role
+  sts_assume_role:
+    role_arn: "{{ assume_role_arn }}"
+    role_session_name: "deploy"
+    duration_seconds: "{{ role_duration }}"
+  register: assumed_role
+  changed_when: false
+
+- name: Get AWS account facts
+  aws_caller_facts:
+    aws_access_key: "{{ assumed_role.sts_creds.access_key }}"
+    aws_secret_key: "{{ assumed_role.sts_creds.secret_key }}"
+    security_token: "{{ assumed_role.sts_creds.session_token }}"
+  register: aws_account_meta
+
+- name: Set AWS account Facts
+  set_fact:
+    aws_account_id: "{{ aws_account_meta.account }}"
+
+# - name: Verify Docker image
+
+- name: Load task definition
+  set_fact:
+    task_definition: "{{ lookup('template', './task-definition.json') }}"
+
+- name: Create task definition
+  ecs_taskdefinition:
+    aws_access_key: "{{ assumed_role.sts_creds.access_key }}"
+    aws_secret_key: "{{ assumed_role.sts_creds.secret_key }}"
+    security_token: "{{ assumed_role.sts_creds.session_token }}"
+    state: present
+    execution_role_arn: "{{ task_definition.executionRoleArn }}"
+    containers: "{{ task_definition.containerDefinitions }}"
+    memory: "{{ task_definition.memory }}"
+    task_role_arn: "{{ task_definition.taskRoleArn }}"
+    family: "{{ task_definition.family }}-{{ env }}"
+    launch_type: "{{ task_definition.requiresCompatibilities.0 }}"
+    network_mode: "{{ task_definition.networkMode }}"
+    cpu: "{{ task_definition.cpu }}"
+  register: task_registration
+
+- name: Create task definition artefact
+  copy:
+    dest: "task_definition_registered.json"
+    content: "{{ task_registration.taskdefinition | to_json }}"
