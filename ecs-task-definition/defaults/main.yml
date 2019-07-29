@@ -8,4 +8,3 @@ docker_tag: "{{ lookup('env','DOCKER_TAG') | default(env, true) | regex_replace(
 assume_role_arn: "{{ lookup('aws_ssm', '/'+ service +'/'+ env +'/roles/deployer' ) }}"
 role_duration: 900
 aws_region: eu-west-2
-
