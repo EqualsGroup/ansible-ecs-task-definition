@@ -54,7 +54,14 @@
     cpu: "{{ task_definition.cpu }}"
   register: task_registration
 
-- name: Create task definition artefact
+- name: Artefact published task definition to task_definition_registered.json
   copy:
     dest: "task_definition_registered.json"
     content: "{{ task_registration.taskdefinition | to_json }}"
+
+- name: Artefact published task definition arn to task_definition_registered_arn.txt
+  copy:
+    dest: "task_definition_registered_arn.txt"
+    content: "{{ task_registration.taskdefinition.taskDefinitionArn }}"
+
+
