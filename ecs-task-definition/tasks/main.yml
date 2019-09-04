@@ -30,7 +30,7 @@
   debug:
     msg: "{{ task_definition | to_json }}"
 
-- name: Create task definition
+- name: Publish task definition
   ecs_taskdefinition:
     aws_access_key: "{{ assumed_role.sts_creds.access_key }}"
     aws_secret_key: "{{ assumed_role.sts_creds.secret_key }}"
@@ -46,12 +46,8 @@
     cpu: "{{ task_definition.cpu }}"
   register: task_registration
 
-- name: Artefact published task definition to task_definition_registered.json
+- name: "Creating artefact: {{ artefact_file }}"
   copy:
-    dest: "task_definition_registered.json"
-    content: "{{ task_registration.taskdefinition | to_json }}"
-
-- name: Artefact published task definition arn to task_definition_registered_arn.txt
-  copy:
-    dest: "task_definition_registered_arn.txt"
+    dest: "{{ artefact_file }}"
     content: "{{ task_registration.taskdefinition.taskDefinitionArn }}"
+
