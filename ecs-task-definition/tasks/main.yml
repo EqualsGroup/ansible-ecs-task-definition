@@ -1,13 +1,5 @@
 ---
 # tasks file for ecs-task-definition
- 
-- name: Verify required variables
-  fail:
-    msg: "Required variable not set"
-  when:
-    - service is not defined
-    - env is not defined
-    - docker_tag is not defined
 
 - name: Assume deployer role
   sts_assume_role:
@@ -48,7 +40,7 @@
     containers: "{{ task_definition.containerDefinitions }}"
     memory: "{{ task_definition.memory }}"
     task_role_arn: "{{ task_definition.taskRoleArn }}"
-    family: "{{ task_definition.family }}-{{ env }}"
+    family: "{{ task_definition.family }}"
     launch_type: "{{ task_definition.requiresCompatibilities.0 }}"
     network_mode: "{{ task_definition.networkMode }}"
     cpu: "{{ task_definition.cpu }}"
@@ -63,5 +55,3 @@
   copy:
     dest: "task_definition_registered_arn.txt"
     content: "{{ task_registration.taskdefinition.taskDefinitionArn }}"
-
-
