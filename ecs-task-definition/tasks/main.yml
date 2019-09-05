@@ -53,7 +53,10 @@
     cpu: "{{ task_definition.cpu }}"
   register: task_registration
 
-- name: "Creating artefact: {{ artefact_file }}"
+- debug:
+    msg: "Published task definition arn: {{ task_registration.taskdefinition.taskDefinitionArn }}"
+
+- name: "Creating task definition artefact: {{ artefact_file }}"
   copy:
     dest: "{{ artefact_file }}"
     content: "{{ task_registration.taskdefinition.taskDefinitionArn }}"
