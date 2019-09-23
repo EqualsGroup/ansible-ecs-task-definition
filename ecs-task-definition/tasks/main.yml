@@ -27,11 +27,25 @@
   set_fact:
     aws_account_id: "{{ aws_account_meta.account }}"
 
+- set_fact:
+    secrets_original: "{{ secrets }}"
+  when: secrets is defined
+
+- name: Populate Secret ARNs
+  set_fact:
+    secrets:  "{{ (secrets|default({}))|combine({item.key: (lookup('pipe', 'AWS_ACCESS_KEY_ID=' + assumed_role.sts_creds.access_key +' AWS_SECRET_ACCESS_KEY=' + assumed_role.sts_creds.secret_key + ' AWS_SESSION_TOKEN=' + assumed_role.sts_creds.session_token + ' aws secretsmanager describe-secret --secret-id ' + item.value) | from_json).get('ARN') })}}"
+  loop: "{{ secrets | default({}) | dict2items }}"
+  when: secrets is defined
+
 # - name: Verify Docker image
 
 - name: Load task definition
   set_fact:
     task_definition: "{{ lookup('template', './task-definition.json') }}"
+
+- set_fact:
+    secrets: "{{ secrets_original }}"
+  when: secrets_original is defined
 
 - name: Task definition
   debug:
