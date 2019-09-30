@@ -30,10 +30,6 @@
 
 # - name: Verify Docker image
 
-- name: Load task definition
-  set_fact:
-    task_definition: "{{ lookup('template', './task-definition.json') }}"
-
 - name: Task definition
   debug:
     msg: "{{ task_definition | to_json }}"
