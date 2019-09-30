@@ -11,3 +11,4 @@ aws_region: eu-west-2
 artefact_file: "task-definition-arn-{{ service }}.txt"
 
 friendly_secrets: false
+task_definition: "{{ lookup('template', './task-definition.json') }}"

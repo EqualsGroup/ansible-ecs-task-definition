@@ -43,10 +43,6 @@
 
 # - name: Verify Docker image
 
-- name: Load task definition
-  set_fact:
-    task_definition: "{{ lookup('template', './task-definition.json') }}"
-
 - set_fact:
     secrets: "{{ secrets_original }}"
   when: 
