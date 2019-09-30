@@ -50,12 +50,6 @@
     
 # - name: Verify Docker image
 
-- set_fact:
-    secrets: "{{ secrets_original }}"
-  when: 
-    - secrets_original is defined
-    - friendly_secrets == true
-
 - name: Load task definition
   set_fact:
     task_definition: "{{ lookup('template', task_definition_path) }}"
@@ -63,6 +57,12 @@
 - name: Task definition
   debug:
     msg: "{{ task_definition | to_json }}"
+
+- set_fact:
+    secrets: "{{ secrets_original }}"
+  when: 
+    - secrets_original is defined
+    - friendly_secrets == true
 
 - name: Publish task definition
   ecs_taskdefinition:
