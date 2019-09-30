@@ -41,6 +41,13 @@
     - secrets is defined
     - friendly_secrets == true
 
+- name: Decoded secret ARNs
+  debug: 
+    msg: "{{ secrets }}"
+  when: 
+    - secrets is defined
+    - friendly_secrets == true
+    
 # - name: Verify Docker image
 
 - set_fact:
