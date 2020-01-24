@@ -1,6 +1,5 @@
 ---
 # tasks file for ecs-task-definition
- 
 - name: Verify required variables
   fail:
     msg: "Required variable not set"
@@ -28,13 +27,44 @@
   set_fact:
     aws_account_id: "{{ aws_account_meta.account }}"
 
+- set_fact:
+    secrets_original: "{{ secrets }}"
+  when: 
+    - secrets is defined
+    - friendly_secrets == true
+
+- name: Populate Secret ARNs
+  set_fact:
+    secrets:  "{{ (secrets|default({}))|combine({item.key: (lookup('pipe', 'AWS_ACCESS_KEY_ID=' + assumed_role.sts_creds.access_key +' AWS_SECRET_ACCESS_KEY=' + assumed_role.sts_creds.secret_key + ' AWS_SESSION_TOKEN=' + assumed_role.sts_creds.session_token + ' aws secretsmanager describe-secret --secret-id ' + item.value) | from_json).get('ARN') })}}"
+  loop: "{{ secrets | default({}) | dict2items }}"
+  when: 
+    - secrets is defined
+    - friendly_secrets == true
+
+- name: Decoded secret ARNs
+  debug: 
+    msg: "{{ secrets }}"
+  when: 
+    - secrets is defined
+    - friendly_secrets == true
+    
 # - name: Verify Docker image
+
+- name: Load task definition
+  set_fact:
+    task_definition: "{{ lookup('template', task_definition_path) }}"
 
 - name: Task definition
   debug:
     msg: "{{ task_definition | to_json }}"
 
-- name: Create task definition
+- set_fact:
+    secrets: "{{ secrets_original }}"
+  when: 
+    - secrets_original is defined
+    - friendly_secrets == true
+
+- name: Publish task definition
   ecs_taskdefinition:
     aws_access_key: "{{ assumed_role.sts_creds.access_key }}"
     aws_secret_key: "{{ assumed_role.sts_creds.secret_key }}"
@@ -44,20 +74,17 @@
     containers: "{{ task_definition.containerDefinitions }}"
     memory: "{{ task_definition.memory }}"
     task_role_arn: "{{ task_definition.taskRoleArn }}"
-    family: "{{ task_definition.family }}-{{ env }}"
+    family: "{{ task_definition.family }}"
     launch_type: "{{ task_definition.requiresCompatibilities.0 }}"
     network_mode: "{{ task_definition.networkMode }}"
     cpu: "{{ task_definition.cpu }}"
   register: task_registration
 
-- name: Artefact published task definition to task_definition_registered.json
-  copy:
-    dest: "task_definition_registered.json"
-    content: "{{ task_registration.taskdefinition | to_json }}"
+- debug:
+    msg: "Published task definition arn: {{ task_registration.taskdefinition.taskDefinitionArn }}"
 
-- name: Artefact published task definition arn to task_definition_registered_arn.txt
+- name: "Creating task definition artefact: {{ artefact_file }}"
   copy:
-    dest: "task_definition_registered_arn.txt"
+    dest: "{{ artefact_file }}"
     content: "{{ task_registration.taskdefinition.taskDefinitionArn }}"
-
 

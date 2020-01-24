@@ -8,4 +8,8 @@ docker_tag: "{{ lookup('env','DOCKER_TAG') | default(env, true) | regex_replace(
 assume_role_arn: "{{ lookup('aws_ssm', '/'+ service +'/'+ env +'/roles/deployer' ) }}"
 role_duration: 900
 aws_region: eu-west-2
-task_definition: "{{ lookup('template', './task-definition.json') }}"
+artefact_file: "task-definition-arn-{{ service }}.txt"
+
+friendly_secrets: false
+task_definition_path: ./task-definition.json
+
