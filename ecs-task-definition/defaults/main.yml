@@ -9,7 +9,9 @@ assume_role_arn: "{{ lookup('aws_ssm', '/'+ service +'/'+ env +'/roles/deployer'
 role_duration: 900
 aws_region: eu-west-2
 artefact_file: "task-definition-arn-{{ service }}.txt"
+artefact_path: "published-task-definitions"
 
 friendly_secrets: false
 task_definition_path: ./task-definition.json
 
+    
