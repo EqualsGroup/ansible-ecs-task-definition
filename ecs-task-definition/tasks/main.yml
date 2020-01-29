@@ -40,6 +40,7 @@
     when: 
       - secrets is defined
       - friendly_secrets == true
+    no_log: true
   
   - name: Decoded secret ARNs
     debug: 
