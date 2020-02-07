@@ -16,7 +16,8 @@
   register: assumed_role
   changed_when: false
   when: 
-    - assume_role_arn 
+    - assume_role_arn is defined
+    - assume_role_arn
 
 - name: "assume_role_arn is false, using existing AWS credentials"
   set_fact:
