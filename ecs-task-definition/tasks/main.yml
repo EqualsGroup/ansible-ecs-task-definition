@@ -17,7 +17,7 @@
     changed_when: false
     when: 
       - assume_role_arn is defined
-      - assume_role_arn is not null
+      - assume_role_arn != null
       - assume_role_arn != ""
   
   - name: Get AWS account facts
