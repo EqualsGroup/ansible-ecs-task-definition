@@ -15,13 +15,23 @@
       duration_seconds: "{{ role_duration }}"
     register: assumed_role
     changed_when: false
+    when: 
+      - assume_role_arn != ""
   
   - name: Get AWS account facts
-    aws_caller_facts:
+    aws_caller_info:
       aws_access_key: "{{ assumed_role.sts_creds.access_key }}"
       aws_secret_key: "{{ assumed_role.sts_creds.secret_key }}"
       security_token: "{{ assumed_role.sts_creds.session_token }}"
     register: aws_account_meta
+    when: 
+      - assumed_role is defined
+  
+  - name: Get AWS account facts
+    aws_caller_info:
+    register: aws_account_meta
+    when: 
+      - assumed_role is not defined
   
   - name: Set AWS account Facts
     set_fact:
@@ -40,7 +50,17 @@
     when: 
       - secrets is defined
       - friendly_secrets == true
+      - assumed_role is defined
     no_log: true
+  
+  - name: Populate Secret ARNs
+    set_fact:
+      secrets:  "{{ (secrets|default({}))|combine({item.key: (lookup('pipe', 'aws secretsmanager describe-secret --secret-id ' + item.value) | from_json).get('ARN') })}}"
+    loop: "{{ secrets | default({}) | dict2items }}"
+    when: 
+      - secrets is defined
+      - friendly_secrets == true
+      - assumed_role is not defined
   
   - name: Decoded secret ARNs
     debug: 
@@ -91,6 +111,26 @@
     loop: "{{ task_definitions }}"
     loop_control:
       loop_var: task_definition
+    when:
+      - assumed_role is defined
+  
+  - name: Publish task definition
+    ecs_taskdefinition:
+      state: present
+      execution_role_arn: "{{ task_definition.executionRoleArn }}"
+      containers: "{{ task_definition.containerDefinitions }}"
+      memory: "{{ task_definition.memory }}"
+      task_role_arn: "{{ task_definition.taskRoleArn }}"
+      family: "{{ task_definition.family }}"
+      launch_type: "{{ task_definition.requiresCompatibilities.0 }}"
+      network_mode: "{{ task_definition.networkMode }}"
+      cpu: "{{ task_definition.cpu }}"
+    register: task_registration
+    loop: "{{ task_definitions }}"
+    loop_control:
+      loop_var: task_definition
+    when:
+      - assumed_role is not defined  
   
   - debug:
       msg: "Published task definition arn: {{ item.taskdefinition.taskDefinitionArn }}"
