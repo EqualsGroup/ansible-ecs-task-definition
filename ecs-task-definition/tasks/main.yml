@@ -16,7 +16,7 @@
     register: assumed_role
     changed_when: false
     when: 
-      - assume_role_arn != ""
+      - assume_role_arn is defined
   
   - name: Get AWS account facts
     aws_caller_info:
