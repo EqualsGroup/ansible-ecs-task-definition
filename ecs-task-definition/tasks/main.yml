@@ -39,14 +39,22 @@
     - assumed_role
 
 - name: Get AWS account facts
-  aws_caller_info:
+  shell: aws sts get-caller-identity
   register: aws_account_meta
   when: 
     - not assumed_role 
-  
+
 - name: Set AWS account Facts
   set_fact:
-    aws_account_id: "{{ aws_account_meta.account }}"
+    aws_account_id: "{{ aws_account_meta.account | default('') }}"
+  when:
+    - assumed_role
+
+- name: Set AWS account Facts
+  set_fact:
+    aws_account_id: "{{ (aws_account_meta.stdout | from_json).get('Account') | default('') }}"
+  when:
+    - not assumed_role
   
 - set_fact:
     secrets_original: "{{ secrets }}"
