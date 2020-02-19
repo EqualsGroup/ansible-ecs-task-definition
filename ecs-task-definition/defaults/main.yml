@@ -6,7 +6,7 @@ env: "{{ lookup('env','ENV') | default(null, true) }}" #because 'environment' is
 docker_tag: "{{ lookup('env','DOCKER_TAG') | default(env, true) | regex_replace('[^a-zA-Z0-9\\-\\_\\.]', '_') }}"
 
 assume_role_arn: "{{ lookup('aws_ssm', '/'+ service +'/'+ env +'/roles/deployer' ) }}"
-role_duration: 900
+role_duration: 3600
 aws_region: eu-west-2
 artefact_file: "task-definition-arn-{{ service }}.txt"
 artefact_path: "published-task-definitions"
