@@ -91,6 +91,8 @@
     loop: "{{ task_definitions }}"
     loop_control:
       loop_var: task_definition
+    async: 900
+    poll: 5
   
   - debug:
       msg: "Published task definition arn: {{ item.taskdefinition.taskDefinitionArn }}"
