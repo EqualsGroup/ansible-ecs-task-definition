@@ -84,6 +84,9 @@
       loop_var: task_definition
     async: 900
     poll: 5
+    until: task_registration.finished
+    retries: 5
+    delay: 5
   
   - debug:
       msg: "Published task definition arn: {{ item.taskdefinition.taskDefinitionArn }}"
