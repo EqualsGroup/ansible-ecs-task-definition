@@ -83,10 +83,14 @@
     loop_control:
       loop_var: task_definition
     async: 900
-    poll: 5
-    until: task_registration.finished
-    retries: 5
-    delay: 5
+    poll: 0
+
+  - name: 'Waiting for task definition registration'
+    async_status:
+      jid: "{{ task_registration.ansible_job_id }}"
+    register: job_result
+    until: job_result.finished
+    retries: 900
   
   - debug:
       msg: "Published task definition arn: {{ item.taskdefinition.taskDefinitionArn }}"
