@@ -51,9 +51,12 @@
       
   # - name: Verify Docker image
   
+  - set_fact:
+      task_definitions: "{{ default({}) }}"
+
   - name: Load task definition
     set_fact:
-      task_definitions: "{{ (task_definitions|default([])) | combine( { service: lookup('template', task_definition_path)} ) }}"
+      task_definitions: "{{ (task_definitions|default({})) | combine( { service: lookup('template', task_definition_path)} ) }}"
     loop: "{{ services }}"
     loop_control:
       loop_var: service
@@ -75,11 +78,8 @@
     register: generated_task_definitions
     no_log: true
 
-  - debug:
-      msg: "{{ generated_task_definitions }}"
-
   - name: Publish task definition
-    shell: "aws ecs register-task-definition --cli-input-json file://{{ task_definition_file.path }} --output=text --query 'taskDefinition.taskDefinitionArn'"
+    shell: "aws ecs register-task-definition --cli-input-json file://{{ task_definition_file.dest }} --output=text --query 'taskDefinition.taskDefinitionArn'"
     environment:
       AWS_ACCESS_KEY_ID: "{{ assumed_role.sts_creds.access_key }}"
       AWS_SECRET_ACCESS_KEY: "{{ assumed_role.sts_creds.secret_key }}"
@@ -88,7 +88,7 @@
     loop_control:
       loop_var: task_definition_file
     register: task_registration
-    # no_log: true
+    no_log: true
   
   - debug:
       msg: "{{ item.task_definition_file.task_definition.value.family }} Published task definition arn: {{ item.stdout }} "
