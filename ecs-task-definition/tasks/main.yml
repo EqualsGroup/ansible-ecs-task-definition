@@ -52,7 +52,7 @@
   # - name: Verify Docker image
   
   - set_fact:
-      task_definitions: "{{ default({}) }}"
+      task_definitions: {}
 
   - name: Load task definition
     set_fact:
