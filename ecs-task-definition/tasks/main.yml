@@ -52,11 +52,11 @@
   # - name: Verify Docker image
   
   - set_fact:
-      task_definitions:
-        
+      task_definitions: "{{ default({}) }}"
+
   - name: Load task definition
     set_fact:
-      task_definitions: "{{ (task_definitions|default([])) | combine( { service: lookup('template', task_definition_path)} ) }}"
+      task_definitions: "{{ (task_definitions|default({})) | combine( { service: lookup('template', task_definition_path)} ) }}"
     loop: "{{ services }}"
     loop_control:
       loop_var: service
