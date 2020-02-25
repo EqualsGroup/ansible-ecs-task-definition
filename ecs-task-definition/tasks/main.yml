@@ -75,9 +75,6 @@
     register: generated_task_definitions
     no_log: true
 
-  - debug:
-      msg: "{{ generated_task_definitions }}"
-
   - name: Publish task definition
     shell: "aws ecs register-task-definition --cli-input-json file://{{ task_definition_file.dest }} --output=text --query 'taskDefinition.taskDefinitionArn'"
     environment:
@@ -88,7 +85,7 @@
     loop_control:
       loop_var: task_definition_file
     register: task_registration
-    # no_log: true
+    no_log: true
   
   - debug:
       msg: "{{ item.task_definition_file.task_definition.value.family }} Published task definition arn: {{ item.stdout }} "
