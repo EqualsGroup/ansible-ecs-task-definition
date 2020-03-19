@@ -17,7 +17,8 @@
   changed_when: false
   when: 
     - assume_role_arn is defined
-    - assume_role_arn
+    - assume_role_arn != ""
+    - assume_role_arn != false
 
 - name: "assume_role_arn is false, using existing AWS credentials"
   set_fact:
@@ -37,7 +38,9 @@
     security_token: "{{ aws_session_token }}"
   register: aws_account_meta
   when: 
-    - assumed_role
+    - assumed_role is defined
+    - assumed_role != ""
+    - assumed_role != false
 
 - name: Get AWS account facts
   shell: aws sts get-caller-identity
@@ -49,7 +52,9 @@
   set_fact:
     aws_account_id: "{{ aws_account_meta.account | default('') }}"
   when:
-    - assumed_role
+    - assumed_role is defined
+    - assumed_role != ""
+    - assumed_role != false
 
 - name: Set AWS account Facts
   set_fact:
@@ -70,7 +75,9 @@
   when: 
     - secrets is defined
     - friendly_secrets == true
-    - assumed_role
+    - assumed_role is defined
+    - assumed_role != ""
+    - assumed_role != false
   no_log: true
 
 - name: Populate Secret ARNs
@@ -123,7 +130,9 @@
   loop_control:
     loop_var: task_definition
   when:
-    - assumed_role
+    - assumed_role is defined
+    - assumed_role != ""
+    - assumed_role != false
 
 - name: Publish task definition
   ecs_taskdefinition:
