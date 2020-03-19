@@ -1,151 +1,151 @@
   ---
-    # tasks file for ecs-task-definition
-  - name: Verify required variables
-    fail:
-      msg: "Required variable not set"
-    when:
-      - services is not defined
-      - env is not defined
-      - docker_tag is not defined
+# tasks file for ecs-task-definition
+- name: Verify required variables
+  fail:
+    msg: "Required variable not set"
+  when:
+    - services is not defined
+    - env is not defined
+    - docker_tag is not defined
+  
+- name: Assuming deployer role
+  sts_assume_role:
+    role_arn: "{{ assume_role_arn }}"
+    role_session_name: "deploy"
+    duration_seconds: "{{ role_duration }}"
+  register: assumed_role
+  changed_when: false
+  when: 
+    - assume_role_arn is defined
+    - assume_role_arn
+
+- name: "assume_role_arn is false, using existing AWS credentials"
+  set_fact:
+    assumed_role: false
+  when:
+    - not assume_role_arn
+
+- set_fact:
+    aws_access_key_id: "{{ assumed_role.sts_creds.access_key | default('') }}"
+    aws_secret_acess_key: "{{ assumed_role.sts_creds.secret_key | default('') }}"
+    aws_session_token: "{{ assumed_role.sts_creds.session_token | default('') }}"
+
+- name: Get AWS account facts
+  aws_caller_info:
+    aws_access_key: "{{ aws_access_key_id }}"
+    aws_secret_key: "{{ aws_secret_acess_key }}"
+    security_token: "{{ aws_session_token }}"
+  register: aws_account_meta
+  when: 
+    - assumed_role
+
+- name: Get AWS account facts
+  shell: aws sts get-caller-identity
+  register: aws_account_meta
+  when: 
+    - not assumed_role 
+
+- name: Set AWS account Facts
+  set_fact:
+    aws_account_id: "{{ aws_account_meta.account | default('') }}"
+  when:
+    - assumed_role
+
+- name: Set AWS account Facts
+  set_fact:
+    aws_account_id: "{{ (aws_account_meta.stdout | from_json).get('Account') | default('') }}"
+  when:
+    - not assumed_role
+  
+- set_fact:
+    secrets_original: "{{ secrets }}"
+  when: 
+    - secrets is defined
+    - friendly_secrets == true
+  
+- name: Populate Secret ARNs
+  set_fact:
+    secrets:  "{{ (secrets|default({}))|combine({item.key: (lookup('pipe', 'AWS_ACCESS_KEY_ID=' + aws_access_key_id +' AWS_SECRET_ACCESS_KEY=' + aws_secret_acess_key + ' AWS_SESSION_TOKEN=' + aws_session_token + ' aws secretsmanager describe-secret --secret-id ' + item.value) | from_json).get('ARN') })}}"
+  loop: "{{ secrets | default({}) | dict2items }}"
+  when: 
+    - secrets is defined
+    - friendly_secrets == true
+    - assumed_role
+  no_log: true
+
+- name: Populate Secret ARNs
+  set_fact:
+    secrets:  "{{ (secrets|default({}))|combine({item.key: (lookup('pipe', 'aws secretsmanager describe-secret --secret-id ' + item.value) | from_json).get('ARN') })}}"
+  loop: "{{ secrets | default({}) | dict2items }}"
+  when: 
+    - secrets is defined
+    - friendly_secrets == true
+    - not assumed_role
+
+- name: Decoded secret ARNs
+  debug: 
+    msg: "{{ secrets }}"
+  when: 
+    - secrets is defined
+    - friendly_secrets == true
     
-  - name: Assuming deployer role
-    sts_assume_role:
-      role_arn: "{{ assume_role_arn }}"
-      role_session_name: "deploy"
-      duration_seconds: "{{ role_duration }}"
-    register: assumed_role
-    changed_when: false
-    when: 
-      - assume_role_arn is defined
-      - assume_role_arn
+# - name: Verify Docker image
 
-  - name: "assume_role_arn is false, using existing AWS credentials"
-    set_fact:
-      assumed_role: false
-    when:
-      - not assume_role_arn
+- name: Load task definition
+  set_fact:
+    task_definitions: "{{ (task_definitions|default([])) + [ lookup('template', task_definition_path) ] }}"
+  loop: "{{ services }}"
+  loop_control:
+    loop_var: service
 
-  - set_fact:
-      aws_access_key_id: "{{ assumed_role.sts_creds.access_key | default('') }}"
-      aws_secret_acess_key: "{{ assumed_role.sts_creds.secret_key | default('') }}"
-      aws_session_token: "{{ assumed_role.sts_creds.session_token | default('') }}"
+- set_fact:
+    secrets: "{{ secrets_original }}"
+  when: 
+    - secrets_original is defined
+    - friendly_secrets == true
 
-  - name: Get AWS account facts
-    aws_caller_info:
-      aws_access_key: "{{ aws_access_key_id }}"
-      aws_secret_key: "{{ aws_secret_acess_key }}"
-      security_token: "{{ aws_session_token }}"
-    register: aws_account_meta
-    when: 
-      - assumed_role
+- name: Publish task definition
+  ecs_taskdefinition:
+    aws_access_key: "{{ assumed_role.sts_creds.access_key }}"
+    aws_secret_key: "{{ assumed_role.sts_creds.secret_key }}"
+    security_token: "{{ assumed_role.sts_creds.session_token }}"
+    state: present
+    execution_role_arn: "{{ task_definition.executionRoleArn }}"
+    containers: "{{ task_definition.containerDefinitions }}"
+    memory: "{{ task_definition.memory }}"
+    task_role_arn: "{{ task_definition.taskRoleArn }}"
+    family: "{{ task_definition.family }}"
+    launch_type: "{{ task_definition.requiresCompatibilities.0 }}"
+    network_mode: "{{ task_definition.networkMode }}"
+    cpu: "{{ task_definition.cpu }}"
+  register: task_registration
+  loop: "{{ task_definitions }}"
+  loop_control:
+    loop_var: task_definition
+  when:
+    - assumed_role
 
-  - name: Get AWS account facts
-    shell: aws sts get-caller-identity
-    register: aws_account_meta
-    when: 
-      - not assumed_role 
+- name: Publish task definition
+  ecs_taskdefinition:
+    state: present
+    execution_role_arn: "{{ task_definition.executionRoleArn }}"
+    containers: "{{ task_definition.containerDefinitions }}"
+    memory: "{{ task_definition.memory }}"
+    task_role_arn: "{{ task_definition.taskRoleArn }}"
+    family: "{{ task_definition.family }}"
+    launch_type: "{{ task_definition.requiresCompatibilities.0 }}"
+    network_mode: "{{ task_definition.networkMode }}"
+    cpu: "{{ task_definition.cpu }}"
+  register: task_registration
+  loop: "{{ task_definitions }}"
+  loop_control:
+    loop_var: task_definition
+  when:
+    - not assumed_role
 
-  - name: Set AWS account Facts
-    set_fact:
-      aws_account_id: "{{ aws_account_meta.account | default('') }}"
-    when:
-      - assumed_role
-
-  - name: Set AWS account Facts
-    set_fact:
-      aws_account_id: "{{ (aws_account_meta.stdout | from_json).get('Account') | default('') }}"
-    when:
-      - not assumed_role
-    
-  - set_fact:
-      secrets_original: "{{ secrets }}"
-    when: 
-      - secrets is defined
-      - friendly_secrets == true
-    
-  - name: Populate Secret ARNs
-    set_fact:
-      secrets:  "{{ (secrets|default({}))|combine({item.key: (lookup('pipe', 'AWS_ACCESS_KEY_ID=' + aws_access_key_id +' AWS_SECRET_ACCESS_KEY=' + aws_secret_acess_key + ' AWS_SESSION_TOKEN=' + aws_session_token + ' aws secretsmanager describe-secret --secret-id ' + item.value) | from_json).get('ARN') })}}"
-    loop: "{{ secrets | default({}) | dict2items }}"
-    when: 
-      - secrets is defined
-      - friendly_secrets == true
-      - assumed_role
-    no_log: true
-
-  - name: Populate Secret ARNs
-    set_fact:
-      secrets:  "{{ (secrets|default({}))|combine({item.key: (lookup('pipe', 'aws secretsmanager describe-secret --secret-id ' + item.value) | from_json).get('ARN') })}}"
-    loop: "{{ secrets | default({}) | dict2items }}"
-    when: 
-      - secrets is defined
-      - friendly_secrets == true
-      - not assumed_role
-
-  - name: Decoded secret ARNs
-    debug: 
-      msg: "{{ secrets }}"
-    when: 
-      - secrets is defined
-      - friendly_secrets == true
-      
-  # - name: Verify Docker image
-
-  - name: Load task definition
-    set_fact:
-      task_definitions: "{{ (task_definitions|default([])) + [ lookup('template', task_definition_path) ] }}"
-    loop: "{{ services }}"
-    loop_control:
-      loop_var: service
-
-  - set_fact:
-      secrets: "{{ secrets_original }}"
-    when: 
-      - secrets_original is defined
-      - friendly_secrets == true
-
-  - name: Publish task definition
-    ecs_taskdefinition:
-      aws_access_key: "{{ assumed_role.sts_creds.access_key }}"
-      aws_secret_key: "{{ assumed_role.sts_creds.secret_key }}"
-      security_token: "{{ assumed_role.sts_creds.session_token }}"
-      state: present
-      execution_role_arn: "{{ task_definition.executionRoleArn }}"
-      containers: "{{ task_definition.containerDefinitions }}"
-      memory: "{{ task_definition.memory }}"
-      task_role_arn: "{{ task_definition.taskRoleArn }}"
-      family: "{{ task_definition.family }}"
-      launch_type: "{{ task_definition.requiresCompatibilities.0 }}"
-      network_mode: "{{ task_definition.networkMode }}"
-      cpu: "{{ task_definition.cpu }}"
-    register: task_registration
-    loop: "{{ task_definitions }}"
-    loop_control:
-      loop_var: task_definition
-    when:
-      - assumed_role
-
-  - name: Publish task definition
-    ecs_taskdefinition:
-      state: present
-      execution_role_arn: "{{ task_definition.executionRoleArn }}"
-      containers: "{{ task_definition.containerDefinitions }}"
-      memory: "{{ task_definition.memory }}"
-      task_role_arn: "{{ task_definition.taskRoleArn }}"
-      family: "{{ task_definition.family }}"
-      launch_type: "{{ task_definition.requiresCompatibilities.0 }}"
-      network_mode: "{{ task_definition.networkMode }}"
-      cpu: "{{ task_definition.cpu }}"
-    register: task_registration
-    loop: "{{ task_definitions }}"
-    loop_control:
-      loop_var: task_definition
-    when:
-      - not assumed_role
-
-  - name: "Creating task definition artefact: {{ artefact_path }}/task-definition-arn-{{ item.taskdefinition.family }}.txt"
-    copy:
-      dest: "{{ artefact_path }}/task-definition-arn-{{ item.taskdefinition.family }}.txt"
-      content: "{{ item.taskdefinition.taskDefinitionArn }}"
-    loop: "{{ task_registration.results }}"
+- name: "Creating task definition artefact: {{ artefact_path }}/task-definition-arn-{{ item.taskdefinition.family }}.txt"
+  copy:
+    dest: "{{ artefact_path }}/task-definition-arn-{{ item.taskdefinition.family }}.txt"
+    content: "{{ item.taskdefinition.taskDefinitionArn }}"
+  loop: "{{ task_registration.results }}"
     
