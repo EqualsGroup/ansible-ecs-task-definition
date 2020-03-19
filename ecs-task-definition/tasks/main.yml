@@ -98,20 +98,11 @@
     loop_control:
       loop_var: service
 
-  - debug:
-      msg: "{{ task_definitions | to_json }}"
-
   - set_fact:
       secrets: "{{ secrets_original }}"
     when: 
       - secrets_original is defined
       - friendly_secrets == true
-
-  - debug:
-      msg: "{{ task_definition }}"
-    loop: "{{ task_definitions }}"
-    loop_control:
-      loop_var: task_definition     
 
   - name: Publish task definition
     ecs_taskdefinition:
@@ -151,10 +142,6 @@
       loop_var: task_definition
     when:
       - not assumed_role
-
-  - debug:
-      msg: "Published task definition arn: {{ item.taskdefinition.taskDefinitionArn }}"
-    loop: "{{ task_registration.results }}"
 
   - name: "Creating task definition artefact: {{ artefact_path }}/task-definition-arn-{{ item.taskdefinition.family }}.txt"
     copy:
