@@ -98,9 +98,12 @@
     
 # - name: Verify Docker image
 
+- set_fact:
+  task_definitions: {}
+
 - name: Load task definition
   set_fact:
-    task_definitions: "{{ (task_definitions|default([])) + [ lookup('template', task_definition_path) ] }}"
+    task_definitions: "{{ (task_definitions|default({})) | combine( { service: lookup('template', task_definition_path)} ) }}"
   loop: "{{ services }}"
   loop_control:
     loop_var: service
@@ -111,52 +114,51 @@
     - secrets_original is defined
     - friendly_secrets == true
 
-- name: Publish task definition
-  ecs_taskdefinition:
-    force_create: true
-    aws_access_key: "{{ assumed_role.sts_creds.access_key }}"
-    aws_secret_key: "{{ assumed_role.sts_creds.secret_key }}"
-    security_token: "{{ assumed_role.sts_creds.session_token }}"
-    state: present
-    execution_role_arn: "{{ task_definition.executionRoleArn }}"
-    containers: "{{ task_definition.containerDefinitions }}"
-    memory: "{{ task_definition.memory }}"
-    task_role_arn: "{{ task_definition.taskRoleArn }}"
-    family: "{{ task_definition.family }}"
-    launch_type: "{{ task_definition.requiresCompatibilities.0 }}"
-    network_mode: "{{ task_definition.networkMode }}"
-    cpu: "{{ task_definition.cpu }}"
-  register: task_registration
-  loop: "{{ task_definitions }}"
+- name: Generate task definition files
+  copy:
+    dest: "/tmp/task_definition_{{ task_definition.key }}.json"
+    content: "{{ task_definition.value | to_json }}"
+  loop: "{{ task_definitions | dict2items }}"
   loop_control:
     loop_var: task_definition
+    index_var: task_definition_index
+  register: generated_task_definitions
+  no_log: true
+
+- name: Publish task definition
+  shell: "aws ecs register-task-definition --cli-input-json file://{{ task_definition_file.dest }} --output=text --query 'taskDefinition.taskDefinitionArn'"
+  environment:
+    AWS_ACCESS_KEY_ID: "{{ aws_access_key_id }}"
+    AWS_SECRET_ACCESS_KEY: "{{ aws_secret_acess_key }}"
+    AWS_SESSION_TOKEN: "{{ aws_session_token }}"
+  loop: "{{ generated_task_definitions.results }}"
+  loop_control:
+    loop_var: task_definition_file
+  register: task_registration
+  no_log: true
   when:
     - assumed_role is defined
     - assumed_role != ""
     - assumed_role != false
 
 - name: Publish task definition
-  ecs_taskdefinition:
-    force_create: true
-    state: present
-    execution_role_arn: "{{ task_definition.executionRoleArn }}"
-    containers: "{{ task_definition.containerDefinitions }}"
-    memory: "{{ task_definition.memory }}"
-    task_role_arn: "{{ task_definition.taskRoleArn }}"
-    family: "{{ task_definition.family }}"
-    launch_type: "{{ task_definition.requiresCompatibilities.0 }}"
-    network_mode: "{{ task_definition.networkMode }}"
-    cpu: "{{ task_definition.cpu }}"
-  register: task_registration
-  loop: "{{ task_definitions }}"
+  shell: "aws ecs register-task-definition --cli-input-json file://{{ task_definition_file.dest }} --output=text --query 'taskDefinition.taskDefinitionArn'"
+  loop: "{{ generated_task_definitions.results }}"
   loop_control:
-    loop_var: task_definition
+    loop_var: task_definition_file
+  register: task_registration
+  no_log: true
   when:
     - not assumed_role
 
-- name: "Creating task definition artefact: {{ artefact_path }}/task-definition-arn-{{ item.taskdefinition.family }}.txt"
-  copy:
-    dest: "{{ artefact_path }}/task-definition-arn-{{ item.taskdefinition.family }}.txt"
-    content: "{{ item.taskdefinition.taskDefinitionArn }}"
+- debug:
+    msg: "{{ item.task_definition_file.task_definition.value.family }} Published task definition arn: {{ item.stdout }} "
   loop: "{{ task_registration.results }}"
+
+- name: "Creating task definition artefact: {{ artefact_path }}/task-definition-arn-{{ item.task_definition_file.task_definition.value.family }}.txt"
+  copy:
+    dest: "{{ artefact_path }}/task-definition-arn-{{ item.task_definition_file.task_definition.value.family }}.txt"
+    content: "{{ item.stdout }}"
+  loop: "{{ task_registration.results }}"
+  no_log: true
   
