@@ -1,5 +1,5 @@
-  ---
-# tasks file for ecs-task-definition
+---
+  # tasks file for ecs-task-definition
 - name: Verify required variables
   fail:
     msg: "Required variable not set"
@@ -148,4 +148,4 @@
     dest: "{{ artefact_path }}/task-definition-arn-{{ item.taskdefinition.family }}.txt"
     content: "{{ item.taskdefinition.taskDefinitionArn }}"
   loop: "{{ task_registration.results }}"
-    
+  
