@@ -113,6 +113,7 @@
 
 - name: Publish task definition
   ecs_taskdefinition:
+    force_create: true
     aws_access_key: "{{ assumed_role.sts_creds.access_key }}"
     aws_secret_key: "{{ assumed_role.sts_creds.secret_key }}"
     security_token: "{{ assumed_role.sts_creds.session_token }}"
@@ -136,6 +137,7 @@
 
 - name: Publish task definition
   ecs_taskdefinition:
+    force_create: true
     state: present
     execution_role_arn: "{{ task_definition.executionRoleArn }}"
     containers: "{{ task_definition.containerDefinitions }}"
