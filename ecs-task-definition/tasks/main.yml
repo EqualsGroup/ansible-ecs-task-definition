@@ -153,12 +153,35 @@
 
 - debug:
     msg: "{{ item.task_definition_file.task_definition.value.family }} Published task definition arn: {{ item.stdout }} "
-  loop: "{{ task_registration_assumed_role.results | default(task_registration.results) }}"
+  loop: "{{ task_registration_assumed_role.results }}"
+  when:
+    - assumed_role is defined
+    - assumed_role != ""
+    - assumed_role != false
+
+- debug:
+    msg: "{{ item.task_definition_file.task_definition.value.family }} Published task definition arn: {{ item.stdout }} "
+  loop: "{{ task_registration.results }}"
+  when:
+    - not assumed_role
 
 - name: "Creating task definition artefact: {{ artefact_path }}/task-definition-arn-{{ item.task_definition_file.task_definition.value.family }}.txt"
   copy:
     dest: "{{ artefact_path }}/task-definition-arn-{{ item.task_definition_file.task_definition.value.family }}.txt"
     content: "{{ item.stdout }}"
-  loop: "{{ task_registration_assumed_role.results | default(task_registration.results) }}"
+  loop: "{{ task_registration_assumed_role.results }}"
   no_log: true
+  when:
+    - assumed_role is defined
+    - assumed_role != ""
+    - assumed_role != false
+
+- name: "Creating task definition artefact: {{ artefact_path }}/task-definition-arn-{{ item.task_definition_file.task_definition.value.family }}.txt"
+  copy:
+    dest: "{{ artefact_path }}/task-definition-arn-{{ item.task_definition_file.task_definition.value.family }}.txt"
+    content: "{{ item.stdout }}"
+  loop: "{{ task_registration.results }}"
+  no_log: true
+  when:
+    - not assumed_role
   
