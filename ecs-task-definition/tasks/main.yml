@@ -88,20 +88,13 @@
     - secrets is defined
     - friendly_secrets == true
     - not assumed_role
-
-- name: Decoded secret ARNs
-  debug: 
-    msg: "{{ secrets }}"
-  when: 
-    - secrets is defined
-    - friendly_secrets == true
     
 # - name: Verify Docker image
 
 - name: Generate task definition secrets block
   set_fact:
-    secrets_generated:  "{{ (secrets_generated|default({}))|combine({'name': item.key, 'valueFrom': item.value })}}"
-  loop: "{{ secrets | default({}) | dict2items }}"
+    secrets_generated:  "{{ (secrets_generated|default([]))|union([{'name': item.key, 'valueFrom': item.value }])}}"
+  loop: "{{ secrets | dict2items }}"
   when: 
     - secrets is defined
 
@@ -124,7 +117,7 @@
 - name: Generate task definition files
   copy:
     dest: "/tmp/task_definition_{{ task_definition.key }}.json"
-    content: "{{ task_definition.value | to_json }}"
+    content: "{{ task_definition.value }}"
   loop: "{{ task_definitions | dict2items }}"
   loop_control:
     loop_var: task_definition
