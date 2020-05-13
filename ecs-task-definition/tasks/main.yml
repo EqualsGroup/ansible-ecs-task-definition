@@ -98,6 +98,13 @@
     
 # - name: Verify Docker image
 
+- name: Generate task definition secrets block
+  set_fact:
+    secrets_generated:  "{{ (secrets_generated|default({}))|combine({'name': item.key, 'valueFrom': item.value })}}"
+  loop: "{{ secrets | default({}) | dict2items }}"
+  when: 
+    - secrets is defined
+
 - set_fact:
     task_definitions: {}
 
