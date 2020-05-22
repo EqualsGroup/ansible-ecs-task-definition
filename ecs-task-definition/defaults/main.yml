@@ -10,7 +10,7 @@ role_duration: 3600
 aws_region: eu-west-2
 artefact_file: "task-definition-arn-{{ service }}.txt"
 artefact_path: "published-task-definitions"
-debug: "{{ lookup('env','DEBUG') | default(false, true) }}"
+debug: "{{ lookup('env','DEBUG') | default(false, true) | bool }}"
 
 friendly_secrets: false
 task_definition_path: ./task-definition.json

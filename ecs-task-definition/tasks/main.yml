@@ -78,7 +78,7 @@
     - assumed_role is defined
     - assumed_role != ""
     - assumed_role != false
-  no_log: "{{ ! debug }}"
+  no_log: "{{ not debug }}"
 
 - name: Populate Secret ARNs
   set_fact:
@@ -123,7 +123,7 @@
     loop_var: task_definition
     index_var: task_definition_index
   register: generated_task_definitions
-  no_log: "{{ ! debug }}"
+  no_log: "{{ not debug }}"
 
 - name: Publish task definition (assumed role)
   shell: "aws ecs register-task-definition --cli-input-json file://{{ task_definition_file.dest }} --output=text --query 'taskDefinition.taskDefinitionArn'"
@@ -135,7 +135,7 @@
   loop_control:
     loop_var: task_definition_file
   register: task_registration_assumed_role
-  no_log: "{{ ! debug }}"
+  no_log: "{{ not debug }}"
   when:
     - assumed_role is defined
     - assumed_role != ""
@@ -147,7 +147,7 @@
   loop_control:
     loop_var: task_definition_file
   register: task_registration
-  no_log: "{{ ! debug }}"
+  no_log: "{{ not debug }}"
   when:
     - not assumed_role
 
@@ -170,7 +170,7 @@
     dest: "{{ artefact_path }}/task-definition-arn-{{ item.task_definition_file.task_definition.value.family }}.txt"
     content: "{{ item.stdout }}"
   loop: "{{ task_registration_assumed_role.results }}"
-  no_log: "{{ ! debug }}"
+  no_log: "{{ not debug }}"
   when:
     - assumed_role is defined
     - assumed_role != ""
@@ -181,7 +181,7 @@
     dest: "{{ artefact_path }}/task-definition-arn-{{ item.task_definition_file.task_definition.value.family }}.txt"
     content: "{{ item.stdout }}"
   loop: "{{ task_registration.results }}"
-  no_log: "{{ ! debug }}"
+  no_log: "{{ not debug }}"
   when:
     - not assumed_role
   
